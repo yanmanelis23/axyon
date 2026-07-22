@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       JSON.stringify(resourceMap).replace(/<\//g, '<\\/') +
       ';</' + 'script>';
     const analyticsScript = '<script>(function(){\n' +
-      '  var CLARITY_PROJECT_ID = "";\n' +
+      '  var CLARITY_PROJECT_ID = "xqjwy5tzn2";\n' +
       '  var enabled = CLARITY_PROJECT_ID && CLARITY_PROJECT_ID !== "PASTE_CLARITY_ID_HERE";\n' +
       '  function clean(value) { return String(value || "").replace(/\\s+/g, " ").trim().slice(0, 60); }\n' +
       '  function slug(value) { return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "unknown"; }\n' +
