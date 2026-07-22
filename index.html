@@ -148,6 +148,64 @@ document.addEventListener('DOMContentLoaded', async function() {
     const resourceScript = '<script>window.__resources = ' +
       JSON.stringify(resourceMap).replace(/<\//g, '<\\/') +
       ';</' + 'script>';
+    const analyticsScript = '<script>(function(){\n' +
+      '  var CLARITY_PROJECT_ID = "";\n' +
+      '  var enabled = CLARITY_PROJECT_ID && CLARITY_PROJECT_ID !== "PASTE_CLARITY_ID_HERE";\n' +
+      '  function clean(value) { return String(value || "").replace(/\\s+/g, " ").trim().slice(0, 60); }\n' +
+      '  function slug(value) { return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "unknown"; }\n' +
+      '  function eventName(prefix, value) { return (prefix + "_" + slug(value)).slice(0, 80); }\n' +
+      '  function send(name, key, value) {\n' +
+      '    if (!window.clarity) return;\n' +
+      '    try { if (key) window.clarity("set", key, clean(value)); window.clarity("event", name); } catch (e) {}\n' +
+      '  }\n' +
+      '  if (enabled) {\n' +
+      '    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", CLARITY_PROJECT_ID);\n' +
+      '  }\n' +
+      '  function start() {\n' +
+      '    if (window.__axyonAnalyticsStarted) return;\n' +
+      '    window.__axyonAnalyticsStarted = true;\n' +
+      '    send("page_loaded", "page_path", location.pathname || "/");\n' +
+      '    document.addEventListener("click", function(e) {\n' +
+      '      var el = e.target && e.target.closest ? e.target.closest("a,button,[role=button],summary") : null;\n' +
+      '      if (!el) return;\n' +
+      '      var href = el.getAttribute("href") || "";\n' +
+      '      var label = el.getAttribute("aria-label") || el.textContent || href || el.tagName;\n' +
+      '      var type = href.indexOf("wa.me") >= 0 || href.indexOf("whatsapp") >= 0 ? "whatsapp" : href.indexOf("tel:") === 0 ? "phone" : href.indexOf("mailto:") === 0 ? "email" : href.indexOf("instagram") >= 0 ? "instagram" : el.tagName.toLowerCase();\n' +
+      '      send(eventName("click", type), "last_click", type + " | " + label);\n' +
+      '    }, true);\n' +
+      '    var active = null;\n' +
+      '    var activeSince = Date.now();\n' +
+      '    var seen = {};\n' +
+      '    function flush(section) {\n' +
+      '      if (!section) return;\n' +
+      '      var seconds = Math.round((Date.now() - activeSince) / 1000);\n' +
+      '      if (seconds < 3) return;\n' +
+      '      var bucket = seconds >= 60 ? "60s_plus" : seconds >= 30 ? "30s_plus" : seconds >= 15 ? "15s_plus" : "3s_plus";\n' +
+      '      send(eventName("section_time", section + "_" + bucket), "last_section_time", section + " | " + bucket);\n' +
+      '    }\n' +
+      '    function observeSections() {\n' +
+      '      var sections = Array.prototype.slice.call(document.querySelectorAll("section[id]"));\n' +
+      '      if (!sections.length || !("IntersectionObserver" in window)) return;\n' +
+      '      var io = new IntersectionObserver(function(entries) {\n' +
+      '        entries.forEach(function(entry) {\n' +
+      '          if (!entry.isIntersecting || entry.intersectionRatio < 0.45) return;\n' +
+      '          var id = entry.target.id || entry.target.getAttribute("data-screen-label") || "section";\n' +
+      '          if (active !== id) { flush(active); active = id; activeSince = Date.now(); }\n' +
+      '          if (!seen[id]) { seen[id] = true; send(eventName("section_viewed", id), "last_section", id); }\n' +
+      '        });\n' +
+      '      }, { threshold: [0.45, 0.7] });\n' +
+      '      sections.forEach(function(section) { io.observe(section); });\n' +
+      '      window.addEventListener("beforeunload", function() { flush(active); });\n' +
+      '      document.addEventListener("visibilitychange", function() { if (document.hidden) flush(active); else activeSince = Date.now(); });\n' +
+      '    }\n' +
+      '    var tries = 0;\n' +
+      '    var timer = setInterval(function() {\n' +
+      '      tries += 1;\n' +
+      '      if (document.querySelector("section[id]") || tries > 20) { clearInterval(timer); observeSections(); }\n' +
+      '    }, 250);\n' +
+      '  }\n' +
+      '  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();\n' +
+      '})();</' + 'script>';
     // Inject after <head> so the DOCTYPE stays first; prepending the script
     // would push the parser into quirks mode. DOMParser always emits a <head>
     // (synthesizing one if the source HTML omitted it) but may carry
@@ -156,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const headOpen = template.match(/<head[^>]*>/i);
     if (headOpen) {
       const i = headOpen.index + headOpen[0].length;
-      template = template.slice(0, i) + resourceScript + template.slice(i);
+      template = template.slice(0, i) + resourceScript + analyticsScript + template.slice(i);
     }
 
     // Parse the template and swap the root element. Scripts inserted via
