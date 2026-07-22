@@ -273,6 +273,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
       function sectionLabel(value) {
         var labels = {
+          unknown: "לא מזוהה",
           section: "פתיחת האתר",
           hero: "פתיחת האתר",
           about: "על יאן",
@@ -289,6 +290,22 @@ document.addEventListener('DOMContentLoaded', async function() {
         };
         return labels[String(value || "").toLowerCase()] || clean(value || "סקשן", 80);
       }
+      function actionLabel(value) {
+        var raw = String(value || "");
+        var type = raw.split("|")[0].trim().toLowerCase();
+        var text = clean(raw.split("|").slice(1).join("|"), 80);
+        var labels = {
+          whatsapp: "וואטסאפ",
+          phone: "טלפון",
+          email: "אימייל",
+          instagram: "אינסטגרם",
+          button: "כפתור",
+          a: "קישור",
+          summary: "שאלה נפתחת",
+          click: "קליק"
+        };
+        return (labels[type] || "פעולה באתר") + (text ? " · " + text : "");
+      }
       function eventLabel(row) {
         var names = {
           page_view: "צפיית עמוד",
@@ -298,7 +315,10 @@ document.addEventListener('DOMContentLoaded', async function() {
           session_end: "סיום ביקור"
         };
         var type = names[row.event_type] || clean(row.event_type || "אירוע", 40);
-        var detail = row.target_text || sectionLabel(row.section_id) || row.page_path || "";
+        var detail = row.event_type === "click" ? actionLabel((row.target_type || "") + " | " + (row.target_text || "")) :
+          row.event_type === "page_view" ? "כניסה לאתר" :
+          row.section_id ? sectionLabel(row.section_id) :
+          row.page_path ? "עמוד האתר" : "";
         return clean(type + (detail ? " · " + detail : ""), 120);
       }
       function aggregate(events) {
@@ -309,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         events.forEach(function(row) {
           if (row.session_id) sessions[row.session_id] = true;
           if (row.event_type === "click") {
-            var key = clean((row.target_type || "click") + " | " + (row.target_text || ""), 110);
+            var key = clean(actionLabel((row.target_type || "click") + " | " + (row.target_text || "")), 110);
             clicks[key] = (clicks[key] || 0) + 1;
           }
           if (row.event_type === "section_view") sections[row.section_id || "unknown"] = (sections[row.section_id || "unknown"] || 0) + 1;
@@ -331,7 +351,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       function rowsHtml(map, emptyText) {
         var rows = Object.keys(map).sort(function(a, b) { return map[b] - map[a]; }).slice(0, 12);
         if (!rows.length) return '<div class="axyon-muted">' + emptyText + '</div>';
-        return rows.map(function(key) { return '<div class="axyon-row"><span>' + escapeHtml(sectionLabel(key)) + '</span><strong>' + map[key] + '</strong></div>'; }).join("");
+        return rows.map(function(key) { return '<div class="axyon-row"><span>' + escapeHtml(key) + '</span><strong>' + map[key] + '</strong></div>'; }).join("");
       }
       function escapeHtml(value) {
         return String(value || "").replace(/[&<>"']/g, function(ch) {
@@ -362,14 +382,14 @@ document.addEventListener('DOMContentLoaded', async function() {
           }).join("") || '<div class="axyon-muted">עוד אין זמן סקשנים</div>';
           body.innerHTML =
             '<div class="axyon-metrics">' +
-              '<div><span>ביקורים</span><strong>' + data.sessions + '</strong></div>' +
-              '<div><span>צפיות עמוד</span><strong>' + data.pageViews + '</strong></div>' +
-              '<div><span>קליקים</span><strong>' + events.filter(function(e) { return e.event_type === "click"; }).length + '</strong></div>' +
-              '<div><span>אירועים</span><strong>' + events.length + '</strong></div>' +
+              '<div><span>כניסות לאתר</span><strong>' + data.sessions + '</strong></div>' +
+              '<div><span>טעינות עמוד</span><strong>' + data.pageViews + '</strong></div>' +
+              '<div><span>לחיצות באתר</span><strong>' + events.filter(function(e) { return e.event_type === "click"; }).length + '</strong></div>' +
+              '<div><span>פעולות שנמדדו</span><strong>' + events.length + '</strong></div>' +
             '</div>' +
             '<div class="axyon-grid">' +
               '<section><h3>על מה לחצו</h3>' + rowsHtml(data.clicks, "עוד אין קליקים") + '</section>' +
-              '<section><h3>סקשנים שנצפו</h3>' + rowsHtml(data.sections, "עוד אין צפיות בסקשנים") + '</section>' +
+              '<section><h3>איזה אזורים ראו</h3>' + rowsHtml(Object.keys(data.sections).reduce(function(out, key) { out[sectionLabel(key)] = data.sections[key]; return out; }, {}), "עוד אין צפיות באזורים") + '</section>' +
               '<section><h3>זמן ממוצע בסקשן</h3>' + timeRows + '</section>' +
               '<section><h3>אירועים אחרונים</h3>' + events.slice(0, 10).map(function(e) {
                 return '<div class="axyon-row"><span>' + escapeHtml(eventLabel(e)) + '</span><strong>' + new Date(e.created_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) + '</strong></div>';
@@ -386,8 +406,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         panel.id = "axyon-analytics-panel";
         panel.dir = "rtl";
         panel.innerHTML =
-          '<style>@import url("https://fonts.googleapis.com/css2?family=Inter:wght@700;900&family=Noto+Sans+Hebrew:wght@400;700;800;900&display=swap");#axyon-analytics-panel{position:fixed;inset:0;z-index:2147483646;background:#0D0D0D;color:#F5F5F5;font-family:"Noto Sans Hebrew",Inter,sans-serif;overflow:auto;padding:28px;background-image:linear-gradient(#1A1A1A .5px,transparent .5px),linear-gradient(90deg,#1A1A1A .5px,transparent .5px);background-size:80px 80px}#axyon-analytics-panel *{box-sizing:border-box}#axyon-analytics-card{max-width:1180px;margin:0 auto;background:#141414;border:1px solid #2A2A2A;border-top:6px solid #FF6B1A;border-radius:0;box-shadow:none;padding:28px}#axyon-analytics-panel header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:24px;border-bottom:1px solid #2A2A2A;padding-bottom:22px}#axyon-analytics-panel h2{font-size:34px;line-height:1.05;font-weight:900;margin:0;color:#F5F5F5}.axyon-brandline{direction:ltr;font-family:Inter,sans-serif;font-weight:900;letter-spacing:.24em;color:#FF6B1A;font-size:13px;margin-bottom:10px}.axyon-title-tick{width:64px;height:8px;background:#FF6B1A;margin:0 0 16px auto}#axyon-analytics-panel h3{font-size:18px;font-weight:800;margin:0 0 14px;color:#F5F5F5}#axyon-analytics-panel button{border:1px solid #555;background:#141414;color:#F5F5F5;border-radius:0;padding:10px 14px;cursor:pointer;font-family:"Noto Sans Hebrew",sans-serif;font-weight:800}#axyon-analytics-panel button:hover{background:#1A1A1A;border-color:#FF6B1A}.axyon-actions{display:flex;gap:8px;flex-wrap:wrap}.axyon-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}.axyon-metrics div,.axyon-grid section{background:#1A1A1A;border:1px solid #2A2A2A;border-right:4px solid #FF6B1A;border-radius:0;padding:18px}.axyon-metrics span{display:block;color:#999;font-size:15px;font-weight:700}.axyon-metrics strong{display:block;font-family:Inter,sans-serif;direction:ltr;font-size:48px;line-height:1;font-weight:900;color:#FF6B1A;margin-top:8px}.axyon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.axyon-row{display:flex;justify-content:space-between;align-items:center;gap:14px;border-top:1px solid #2A2A2A;padding:11px 0;font-size:15px;color:#D8D8D8}.axyon-row:first-of-type{border-top:0}.axyon-row span{overflow:hidden;text-overflow:ellipsis}.axyon-row strong{direction:ltr;font-family:Inter,sans-serif;color:#F5F5F5;white-space:nowrap;font-weight:900}.axyon-muted{color:#999;padding:10px 0;font-size:15px}.axyon-error{color:#F5F5F5;background:#1A1A1A;border:1px solid #FF6B1A;border-right:4px solid #FF6B1A;padding:14px;border-radius:0}@media(max-width:760px){#axyon-analytics-panel{padding:10px}#axyon-analytics-card{padding:18px}.axyon-metrics,.axyon-grid{grid-template-columns:1fr}#axyon-analytics-panel header{align-items:flex-start;flex-direction:column}#axyon-analytics-panel h2{font-size:28px}.axyon-metrics strong{font-size:40px}}</style>' +
-          '<div id="axyon-analytics-card"><header><div><div class="axyon-brandline">AXYON PERFORMANCE · DATA</div><div class="axyon-title-tick"></div><h2>לוח נתוני האתר</h2><div class="axyon-muted">ביקורים, קליקים וזמן שהייה באתר — בעברית, בתוך AXYON</div></div><div class="axyon-actions"><button data-days="1">24 שעות</button><button data-days="7">7 ימים</button><button data-days="">כל הנתונים</button><button data-close="1">סגור</button></div></header><div id="axyon-analytics-body"></div></div>';
+          '<style>#axyon-analytics-panel{position:fixed;inset:0;z-index:2147483646;background:#0D0D0D;color:#F5F5F5;font-family:Rubik,"Noto Sans Hebrew",Arial,sans-serif;overflow:auto;padding:30px;background-image:linear-gradient(#1A1A1A 1px,transparent 1px),linear-gradient(90deg,#1A1A1A 1px,transparent 1px);background-size:26px 26px}#axyon-analytics-panel *{box-sizing:border-box;border-radius:0}#axyon-analytics-card{max-width:1220px;margin:0 auto;background:#0D0D0D;border:1px solid #2A2A2A;border-top:7px solid #EA5A16;box-shadow:none;padding:30px;position:relative;overflow:hidden}#axyon-analytics-card:before,#axyon-analytics-card:after{content:"";position:absolute;width:18px;height:18px;pointer-events:none}#axyon-analytics-card:before{top:22px;right:22px;border-top:2px solid #EA5A16;border-right:2px solid #EA5A16}#axyon-analytics-card:after{bottom:22px;left:22px;border-bottom:2px solid #EA5A16;border-left:2px solid #EA5A16}#axyon-analytics-panel header{position:relative;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start;margin-bottom:26px;border-bottom:1px solid #2A2A2A;padding-bottom:24px}.axyon-mark{direction:ltr;font-family:Inter,Arial,sans-serif;font-weight:900;letter-spacing:.18em;color:#F5F5F5;font-size:20px;display:flex;align-items:center;gap:10px}.axyon-mark span{width:13px;height:13px;background:#EA5A16;display:inline-block;transform:rotate(45deg)}.axyon-kicker{display:inline-block;margin-top:16px;color:#EA5A16;font-size:15px;font-weight:800}.axyon-title-tick{width:72px;height:9px;background:#EA5A16;margin:18px 0 16px auto}#axyon-analytics-panel h2{font-size:48px;line-height:1;font-weight:900;margin:0;color:#F5F5F5;letter-spacing:0}#axyon-analytics-panel h3{font-size:20px;font-weight:900;margin:0 0 16px;color:#F5F5F5}.axyon-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start}#axyon-analytics-panel button{border:1px solid #2A2A2A;background:#141414;color:#F5F5F5;padding:12px 16px;cursor:pointer;font-family:Rubik,"Noto Sans Hebrew",Arial,sans-serif;font-size:15px;font-weight:800}#axyon-analytics-panel button:hover{background:#1A1A1A;border-color:#EA5A16;color:#EA5A16}.axyon-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}.axyon-metrics div,.axyon-grid section{background:#141414;border:1px solid #2A2A2A;border-right:4px solid #EA5A16;padding:20px}.axyon-metrics span{display:block;color:#999;font-size:16px;font-weight:700}.axyon-metrics strong{display:block;font-family:Inter,Arial,sans-serif;direction:ltr;font-size:58px;line-height:.95;font-weight:900;color:#EA5A16;margin-top:10px}.axyon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.axyon-row{display:flex;justify-content:space-between;align-items:center;gap:18px;border-top:1px solid #2A2A2A;padding:12px 0;font-size:16px;color:#D6D6D6}.axyon-row:first-of-type{border-top:0}.axyon-row span{overflow:hidden;text-overflow:ellipsis}.axyon-row strong{direction:ltr;font-family:Inter,Arial,sans-serif;color:#F5F5F5;white-space:nowrap;font-weight:900}.axyon-muted{color:#999;padding:10px 0;font-size:16px;font-weight:500}.axyon-error{color:#F5F5F5;background:#141414;border:1px solid #EA5A16;border-right:4px solid #EA5A16;padding:16px}@media(max-width:760px){#axyon-analytics-panel{padding:10px}#axyon-analytics-card{padding:18px}.axyon-metrics,.axyon-grid,#axyon-analytics-panel header{grid-template-columns:1fr}#axyon-analytics-panel h2{font-size:34px}.axyon-metrics strong{font-size:44px}.axyon-actions{width:100%}}</style>' +
+          '<div id="axyon-analytics-card"><header><div><div class="axyon-mark"><span></span>AXYON</div><div class="axyon-kicker">לוח בקרה פרטי</div><div class="axyon-title-tick"></div><h2>נתוני האתר</h2><div class="axyon-muted">כניסות, לחיצות וזמן שהייה. הכל כאן, בעברית, בתוך האתר.</div></div><div class="axyon-actions"><button data-days="1">יממה אחרונה</button><button data-days="7">שבוע אחרון</button><button data-days="">כל התקופה</button><button data-close="1">סגור</button></div></header><div id="axyon-analytics-body"></div></div>';
         document.body.appendChild(panel);
         panel.addEventListener("click", function(e) {
           var button = e.target.closest("button");
@@ -398,7 +418,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         renderDashboard(7);
       }
       async function requestDashboard() {
-        var pass = window.prompt("AXYON analytics password");
+        var pass = window.prompt("סיסמה ללוח הבקרה");
         if (pass == null) return;
         if (await checkPassword(pass)) showDashboard();
         else window.alert("סיסמה שגויה");
@@ -408,7 +428,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         var btn = document.createElement("button");
         btn.id = "axyon-hidden-analytics";
         btn.type = "button";
-        btn.setAttribute("aria-label", "AXYON analytics");
+        btn.setAttribute("aria-label", "לוח בקרה");
         btn.style.cssText = "position:fixed;top:0;left:0;width:44px;height:44px;z-index:2147483647;border:0;background:transparent;opacity:.02;cursor:default;padding:0";
         btn.addEventListener("click", requestDashboard);
         document.body.appendChild(btn);
