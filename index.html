@@ -148,90 +148,251 @@ document.addEventListener('DOMContentLoaded', async function() {
     const resourceScript = '<script>window.__resources = ' +
       JSON.stringify(resourceMap).replace(/<\//g, '<\\/') +
       ';</' + 'script>';
-    const analyticsScript = '<script>(function(){\n' +
-      '  var CLARITY_PROJECT_ID = "xqjwy5tzn2";\n' +
-      '  var enabled = CLARITY_PROJECT_ID && CLARITY_PROJECT_ID !== "PASTE_CLARITY_ID_HERE";\n' +
-      '  function clean(value) { return String(value || "").replace(/\\s+/g, " ").trim().slice(0, 60); }\n' +
-      '  function slug(value) { return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "unknown"; }\n' +
-      '  function eventName(prefix, value) { return (prefix + "_" + slug(value)).slice(0, 80); }\n' +
-      '  function send(name, key, value) {\n' +
-      '    if (!window.clarity) return;\n' +
-      '    try { if (key) window.clarity("set", key, clean(value)); window.clarity("event", name); } catch (e) {}\n' +
-      '  }\n' +
-      '  if (enabled) {\n' +
-      '    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", CLARITY_PROJECT_ID);\n' +
-      '  }\n' +
-      '  function start() {\n' +
-      '    if (window.__axyonAnalyticsStarted) return;\n' +
-      '    window.__axyonAnalyticsStarted = true;\n' +
-      '    send("page_loaded", "page_path", location.pathname || "/");\n' +
-      '    document.addEventListener("click", function(e) {\n' +
-      '      var el = e.target && e.target.closest ? e.target.closest("a,button,[role=button],summary") : null;\n' +
-      '      if (!el) return;\n' +
-      '      var href = el.getAttribute("href") || "";\n' +
-      '      var label = el.getAttribute("aria-label") || el.textContent || href || el.tagName;\n' +
-      '      var type = href.indexOf("wa.me") >= 0 || href.indexOf("whatsapp") >= 0 ? "whatsapp" : href.indexOf("tel:") === 0 ? "phone" : href.indexOf("mailto:") === 0 ? "email" : href.indexOf("instagram") >= 0 ? "instagram" : el.tagName.toLowerCase();\n' +
-      '      send(eventName("click", type), "last_click", type + " | " + label);\n' +
-      '    }, true);\n' +
-      '    var active = null;\n' +
-      '    var activeSince = Date.now();\n' +
-      '    var seen = {};\n' +
-      '    function flush(section) {\n' +
-      '      if (!section) return;\n' +
-      '      var seconds = Math.round((Date.now() - activeSince) / 1000);\n' +
-      '      if (seconds < 3) return;\n' +
-      '      var bucket = seconds >= 60 ? "60s_plus" : seconds >= 30 ? "30s_plus" : seconds >= 15 ? "15s_plus" : "3s_plus";\n' +
-      '      send(eventName("section_time", section + "_" + bucket), "last_section_time", section + " | " + bucket);\n' +
-      '    }\n' +
-      '    function observeSections() {\n' +
-      '      var sections = Array.prototype.slice.call(document.querySelectorAll("section[id]"));\n' +
-      '      if (!sections.length || !("IntersectionObserver" in window)) return;\n' +
-      '      var io = new IntersectionObserver(function(entries) {\n' +
-      '        entries.forEach(function(entry) {\n' +
-      '          if (!entry.isIntersecting || entry.intersectionRatio < 0.45) return;\n' +
-      '          var id = entry.target.id || entry.target.getAttribute("data-screen-label") || "section";\n' +
-      '          if (active !== id) { flush(active); active = id; activeSince = Date.now(); }\n' +
-      '          if (!seen[id]) { seen[id] = true; send(eventName("section_viewed", id), "last_section", id); }\n' +
-      '        });\n' +
-      '      }, { threshold: [0.45, 0.7] });\n' +
-      '      sections.forEach(function(section) { io.observe(section); });\n' +
-      '      window.addEventListener("beforeunload", function() { flush(active); });\n' +
-      '      document.addEventListener("visibilitychange", function() { if (document.hidden) flush(active); else activeSince = Date.now(); });\n' +
-      '    }\n' +
-      '    var tries = 0;\n' +
-      '    var timer = setInterval(function() {\n' +
-      '      tries += 1;\n' +
-      '      if (document.querySelector("section[id]") || tries > 20) { clearInterval(timer); observeSections(); }\n' +
-      '    }, 250);\n' +
-      '  }\n' +
-      '  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();\n' +
-      '})();</' + 'script>';
-    const adminShortcutScript = '<script>(function(){\n' +
-      '  var DASHBOARD_URL = "https://clarity.microsoft.com/projects/view/xqjwy5tzn2/dashboard";\n' +
-      '  var PASSWORD_HASH = "69f5bed91321537a71cdc4509cdf5d6e1091850aa98cfb4a149db5cd9baba391";\n' +
-      '  function hex(buffer) { return Array.prototype.map.call(new Uint8Array(buffer), function(b) { return b.toString(16).padStart(2, "0"); }).join(""); }\n' +
-      '  async function checkPassword(value) {\n' +
-      '    if (!window.crypto || !crypto.subtle) return false;\n' +
-      '    var bytes = new TextEncoder().encode(value || "");\n' +
-      '    return hex(await crypto.subtle.digest("SHA-256", bytes)) === PASSWORD_HASH;\n' +
-      '  }\n' +
-      '  function install() {\n' +
-      '    if (document.getElementById("axyon-hidden-analytics")) return;\n' +
-      '    var btn = document.createElement("button");\n' +
-      '    btn.id = "axyon-hidden-analytics";\n' +
-      '    btn.type = "button";\n' +
-      '    btn.setAttribute("aria-label", "AXYON analytics");\n' +
-      '    btn.style.cssText = "position:fixed;top:0;left:0;width:42px;height:42px;z-index:2147483647;border:0;background:transparent;opacity:.02;cursor:default;padding:0";\n' +
-      '    btn.addEventListener("click", async function() {\n' +
-      '      var pass = window.prompt("AXYON analytics password");\n' +
-      '      if (pass == null) return;\n' +
-      '      if (await checkPassword(pass)) window.open(DASHBOARD_URL, "_blank", "noopener");\n' +
-      '      else window.alert("Wrong password");\n' +
-      '    });\n' +
-      '    document.body.appendChild(btn);\n' +
-      '  }\n' +
-      '  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();\n' +
-      '})();</' + 'script>';
+    const analyticsRuntime = function() {
+      var SUPABASE_URL = "https://tzfwvzmqhdpffmkxiyhl.supabase.co";
+      var SUPABASE_KEY = "sb_publishable_spmyziXjq6U9rwjNg0A4ww_RpC6tF5Q";
+      var PASSWORD_HASH = "69f5bed91321537a71cdc4509cdf5d6e1091850aa98cfb4a149db5cd9baba391";
+      var endpoint = SUPABASE_URL + "/rest/v1/analytics_events";
+
+      function clean(value, limit) {
+        return String(value || "").replace(/\s+/g, " ").trim().slice(0, limit || 90);
+      }
+      function getSessionId() {
+        var key = "axyon_session_id";
+        try {
+          var existing = localStorage.getItem(key);
+          if (existing) return existing;
+          var id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+          localStorage.setItem(key, id);
+          return id;
+        } catch (e) {
+          return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+        }
+      }
+      var sessionId = getSessionId();
+      function send(event) {
+        if (!SUPABASE_URL || !SUPABASE_KEY) return;
+        var body = JSON.stringify(Object.assign({
+          session_id: sessionId,
+          page_path: location.pathname || "/",
+          metadata: {}
+        }, event));
+        try {
+          fetch(endpoint, {
+            method: "POST",
+            keepalive: body.length < 60000,
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: "Bearer " + SUPABASE_KEY,
+              "Content-Type": "application/json",
+              Prefer: "return=minimal"
+            },
+            body: body
+          }).catch(function() {});
+        } catch (e) {}
+      }
+      function sectionName(el) {
+        if (!el) return "unknown";
+        return clean(el.id || el.getAttribute("data-screen-label") || el.getAttribute("aria-label") || el.querySelector("h1,h2,h3")?.textContent || "section", 70);
+      }
+      function targetInfo(el) {
+        var href = el.getAttribute("href") || "";
+        var text = clean(el.getAttribute("aria-label") || el.textContent || href || el.tagName, 90);
+        var type = href.indexOf("wa.me") >= 0 || href.indexOf("whatsapp") >= 0 ? "whatsapp" :
+          href.indexOf("tel:") === 0 ? "phone" :
+          href.indexOf("mailto:") === 0 ? "email" :
+          href.indexOf("instagram") >= 0 ? "instagram" :
+          el.tagName.toLowerCase();
+        return { type: type, text: text };
+      }
+      function startTracking() {
+        if (window.__axyonAnalyticsStarted) return;
+        window.__axyonAnalyticsStarted = true;
+        var params = new URLSearchParams(location.search);
+        send({
+          event_type: "page_view",
+          event_name: "page_view",
+          metadata: {
+            referrer: clean(document.referrer, 160),
+            viewport: window.innerWidth + "x" + window.innerHeight,
+            utm_source: clean(params.get("utm_source"), 80),
+            utm_campaign: clean(params.get("utm_campaign"), 80)
+          }
+        });
+        document.addEventListener("click", function(e) {
+          if (e.target && e.target.closest && e.target.closest("#axyon-analytics-panel,#axyon-hidden-analytics")) return;
+          var el = e.target && e.target.closest ? e.target.closest("a,button,[role=button],summary") : null;
+          if (!el) return;
+          var target = targetInfo(el);
+          send({ event_type: "click", event_name: "click_" + target.type, target_type: target.type, target_text: target.text });
+        }, true);
+        var active = null;
+        var activeSince = Date.now();
+        var seen = {};
+        function flush() {
+          if (!active) return;
+          var seconds = Math.round((Date.now() - activeSince) / 1000);
+          if (seconds >= 2) send({ event_type: "section_time", event_name: "section_time", section_id: active, duration_seconds: seconds });
+          activeSince = Date.now();
+        }
+        function observeSections() {
+          var sections = Array.prototype.slice.call(document.querySelectorAll("section[id],main,header,footer"));
+          if (!sections.length || !("IntersectionObserver" in window)) return;
+          var io = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+              if (!entry.isIntersecting || entry.intersectionRatio < 0.45) return;
+              var id = sectionName(entry.target);
+              if (active !== id) { flush(); active = id; activeSince = Date.now(); }
+              if (!seen[id]) {
+                seen[id] = true;
+                send({ event_type: "section_view", event_name: "section_view", section_id: id });
+              }
+            });
+          }, { threshold: [0.45, 0.7] });
+          sections.forEach(function(section) { io.observe(section); });
+          window.addEventListener("beforeunload", flush);
+          document.addEventListener("visibilitychange", function() { if (document.hidden) flush(); else activeSince = Date.now(); });
+        }
+        var tries = 0;
+        var timer = setInterval(function() {
+          tries += 1;
+          if (document.querySelector("section[id],main") || tries > 24) { clearInterval(timer); observeSections(); }
+        }, 250);
+      }
+      function hex(buffer) {
+        return Array.prototype.map.call(new Uint8Array(buffer), function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+      }
+      async function checkPassword(value) {
+        if (!window.crypto || !crypto.subtle) return false;
+        return hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value || ""))) === PASSWORD_HASH;
+      }
+      function formatTime(value) {
+        var seconds = Math.max(0, Math.round(value || 0));
+        if (seconds < 60) return seconds + "s";
+        return Math.floor(seconds / 60) + "m " + (seconds % 60) + "s";
+      }
+      function aggregate(events) {
+        var sessions = {};
+        var clicks = {};
+        var sections = {};
+        var sectionTime = {};
+        events.forEach(function(row) {
+          if (row.session_id) sessions[row.session_id] = true;
+          if (row.event_type === "click") {
+            var key = clean((row.target_type || "click") + " | " + (row.target_text || ""), 110);
+            clicks[key] = (clicks[key] || 0) + 1;
+          }
+          if (row.event_type === "section_view") sections[row.section_id || "unknown"] = (sections[row.section_id || "unknown"] || 0) + 1;
+          if (row.event_type === "section_time" && row.duration_seconds) {
+            var id = row.section_id || "unknown";
+            sectionTime[id] = sectionTime[id] || { total: 0, count: 0 };
+            sectionTime[id].total += row.duration_seconds;
+            sectionTime[id].count += 1;
+          }
+        });
+        return {
+          sessions: Object.keys(sessions).length,
+          pageViews: events.filter(function(e) { return e.event_type === "page_view"; }).length,
+          clicks: clicks,
+          sections: sections,
+          sectionTime: sectionTime
+        };
+      }
+      function rowsHtml(map, emptyText) {
+        var rows = Object.keys(map).sort(function(a, b) { return map[b] - map[a]; }).slice(0, 12);
+        if (!rows.length) return '<div class="axyon-muted">' + emptyText + '</div>';
+        return rows.map(function(key) { return '<div class="axyon-row"><span>' + escapeHtml(key) + '</span><strong>' + map[key] + '</strong></div>'; }).join("");
+      }
+      function escapeHtml(value) {
+        return String(value || "").replace(/[&<>"']/g, function(ch) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+        });
+      }
+      async function fetchEvents(days) {
+        var url = endpoint + "?select=created_at,session_id,event_type,event_name,page_path,section_id,target_type,target_text,duration_seconds,metadata&order=created_at.desc&limit=3000";
+        if (days) {
+          var since = new Date(Date.now() - days * 86400000).toISOString();
+          url += "&created_at=gte." + encodeURIComponent(since);
+        }
+        var res = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
+        if (!res.ok) throw new Error("Supabase returned " + res.status);
+        return res.json();
+      }
+      async function renderDashboard(days) {
+        var body = document.getElementById("axyon-analytics-body");
+        body.innerHTML = '<div class="axyon-muted">טוען נתונים...</div>';
+        try {
+          var events = await fetchEvents(days);
+          var data = aggregate(events);
+          var timeRows = Object.keys(data.sectionTime).sort(function(a, b) {
+            return (data.sectionTime[b].total / data.sectionTime[b].count) - (data.sectionTime[a].total / data.sectionTime[a].count);
+          }).slice(0, 12).map(function(key) {
+            var item = data.sectionTime[key];
+            return '<div class="axyon-row"><span>' + escapeHtml(key) + '</span><strong>' + formatTime(item.total / item.count) + '</strong></div>';
+          }).join("") || '<div class="axyon-muted">עוד אין זמן סקשנים</div>';
+          body.innerHTML =
+            '<div class="axyon-metrics">' +
+              '<div><span>ביקורים</span><strong>' + data.sessions + '</strong></div>' +
+              '<div><span>צפיות עמוד</span><strong>' + data.pageViews + '</strong></div>' +
+              '<div><span>קליקים</span><strong>' + events.filter(function(e) { return e.event_type === "click"; }).length + '</strong></div>' +
+              '<div><span>אירועים</span><strong>' + events.length + '</strong></div>' +
+            '</div>' +
+            '<div class="axyon-grid">' +
+              '<section><h3>על מה לחצו</h3>' + rowsHtml(data.clicks, "עוד אין קליקים") + '</section>' +
+              '<section><h3>סקשנים שנצפו</h3>' + rowsHtml(data.sections, "עוד אין צפיות בסקשנים") + '</section>' +
+              '<section><h3>זמן ממוצע בסקשן</h3>' + timeRows + '</section>' +
+              '<section><h3>אירועים אחרונים</h3>' + events.slice(0, 10).map(function(e) {
+                return '<div class="axyon-row"><span>' + escapeHtml(e.event_type + " · " + (e.target_text || e.section_id || e.page_path || "")) + '</span><strong>' + new Date(e.created_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) + '</strong></div>';
+              }).join("") + '</section>' +
+            '</div>';
+        } catch (err) {
+          body.innerHTML = '<div class="axyon-error">לא הצלחתי לטעון נתונים: ' + escapeHtml(err.message) + '</div>';
+        }
+      }
+      function showDashboard() {
+        var existing = document.getElementById("axyon-analytics-panel");
+        if (existing) { existing.hidden = false; renderDashboard(7); return; }
+        var panel = document.createElement("div");
+        panel.id = "axyon-analytics-panel";
+        panel.dir = "rtl";
+        panel.innerHTML =
+          '<style>#axyon-analytics-panel{position:fixed;inset:0;z-index:2147483646;background:rgba(8,10,12,.92);color:#f7f3ea;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:auto;padding:24px}#axyon-analytics-panel *{box-sizing:border-box}#axyon-analytics-card{max-width:1120px;margin:0 auto;background:#111418;border:1px solid #30343a;border-radius:8px;box-shadow:0 24px 70px rgba(0,0,0,.45);padding:22px}#axyon-analytics-panel header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}#axyon-analytics-panel h2{font-size:24px;margin:0}#axyon-analytics-panel h3{font-size:15px;margin:0 0 12px;color:#f2a15f}#axyon-analytics-panel button{border:1px solid #444b54;background:#181d23;color:#fff;border-radius:6px;padding:9px 12px;cursor:pointer}#axyon-analytics-panel button:hover{background:#242b33}.axyon-actions{display:flex;gap:8px;flex-wrap:wrap}.axyon-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.axyon-metrics div,.axyon-grid section{background:#171b20;border:1px solid #2b3138;border-radius:8px;padding:14px}.axyon-metrics span{display:block;color:#aeb6c1;font-size:13px}.axyon-metrics strong{display:block;font-size:28px;margin-top:5px}.axyon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.axyon-row{display:flex;justify-content:space-between;gap:14px;border-top:1px solid #2b3138;padding:9px 0;font-size:13px}.axyon-row:first-of-type{border-top:0}.axyon-row span{overflow:hidden;text-overflow:ellipsis}.axyon-row strong{color:#f7f3ea;white-space:nowrap}.axyon-muted{color:#aeb6c1;padding:10px 0}.axyon-error{color:#ff9b8f;background:#2a1717;border:1px solid #633;padding:12px;border-radius:6px}@media(max-width:760px){#axyon-analytics-panel{padding:10px}#axyon-analytics-card{padding:14px}.axyon-metrics,.axyon-grid{grid-template-columns:1fr}#axyon-analytics-panel header{align-items:flex-start;flex-direction:column}}</style>' +
+          '<div id="axyon-analytics-card"><header><div><h2>AXYON Analytics</h2><div class="axyon-muted">נתונים מתוך האתר עצמו</div></div><div class="axyon-actions"><button data-days="1">24 שעות</button><button data-days="7">7 ימים</button><button data-days="">הכל</button><button data-close="1">סגור</button></div></header><div id="axyon-analytics-body"></div></div>';
+        document.body.appendChild(panel);
+        panel.addEventListener("click", function(e) {
+          var button = e.target.closest("button");
+          if (!button) return;
+          if (button.dataset.close) { panel.hidden = true; return; }
+          if ("days" in button.dataset) renderDashboard(button.dataset.days ? Number(button.dataset.days) : null);
+        });
+        renderDashboard(7);
+      }
+      async function requestDashboard() {
+        var pass = window.prompt("AXYON analytics password");
+        if (pass == null) return;
+        if (await checkPassword(pass)) showDashboard();
+        else window.alert("Wrong password");
+      }
+      function installShortcut() {
+        if (document.getElementById("axyon-hidden-analytics")) return;
+        var btn = document.createElement("button");
+        btn.id = "axyon-hidden-analytics";
+        btn.type = "button";
+        btn.setAttribute("aria-label", "AXYON analytics");
+        btn.style.cssText = "position:fixed;top:0;left:0;width:44px;height:44px;z-index:2147483647;border:0;background:transparent;opacity:.02;cursor:default;padding:0";
+        btn.addEventListener("click", requestDashboard);
+        document.body.appendChild(btn);
+        window.__axyonOpenAnalytics = requestDashboard;
+        if (location.hash === "#analytics") requestDashboard();
+      }
+      function start() {
+        startTracking();
+        installShortcut();
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+    };
+    const analyticsScript = '<script>(' + analyticsRuntime.toString().replace(/<\//g, '<\\/') + ')();</' + 'script>';
+    const adminShortcutScript = '';
     // Inject after <head> so the DOCTYPE stays first; prepending the script
     // would push the parser into quirks mode. DOMParser always emits a <head>
     // (synthesizing one if the source HTML omitted it) but may carry
