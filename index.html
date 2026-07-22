@@ -206,6 +206,32 @@ document.addEventListener('DOMContentLoaded', async function() {
       '  }\n' +
       '  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();\n' +
       '})();</' + 'script>';
+    const adminShortcutScript = '<script>(function(){\n' +
+      '  var DASHBOARD_URL = "https://clarity.microsoft.com/projects/view/xqjwy5tzn2/dashboard";\n' +
+      '  var PASSWORD_HASH = "69f5bed91321537a71cdc4509cdf5d6e1091850aa98cfb4a149db5cd9baba391";\n' +
+      '  function hex(buffer) { return Array.prototype.map.call(new Uint8Array(buffer), function(b) { return b.toString(16).padStart(2, "0"); }).join(""); }\n' +
+      '  async function checkPassword(value) {\n' +
+      '    if (!window.crypto || !crypto.subtle) return false;\n' +
+      '    var bytes = new TextEncoder().encode(value || "");\n' +
+      '    return hex(await crypto.subtle.digest("SHA-256", bytes)) === PASSWORD_HASH;\n' +
+      '  }\n' +
+      '  function install() {\n' +
+      '    if (document.getElementById("axyon-hidden-analytics")) return;\n' +
+      '    var btn = document.createElement("button");\n' +
+      '    btn.id = "axyon-hidden-analytics";\n' +
+      '    btn.type = "button";\n' +
+      '    btn.setAttribute("aria-label", "AXYON analytics");\n' +
+      '    btn.style.cssText = "position:fixed;top:0;left:0;width:42px;height:42px;z-index:2147483647;border:0;background:transparent;opacity:.02;cursor:default;padding:0";\n' +
+      '    btn.addEventListener("click", async function() {\n' +
+      '      var pass = window.prompt("AXYON analytics password");\n' +
+      '      if (pass == null) return;\n' +
+      '      if (await checkPassword(pass)) window.open(DASHBOARD_URL, "_blank", "noopener");\n' +
+      '      else window.alert("Wrong password");\n' +
+      '    });\n' +
+      '    document.body.appendChild(btn);\n' +
+      '  }\n' +
+      '  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();\n' +
+      '})();</' + 'script>';
     // Inject after <head> so the DOCTYPE stays first; prepending the script
     // would push the parser into quirks mode. DOMParser always emits a <head>
     // (synthesizing one if the source HTML omitted it) but may carry
@@ -214,7 +240,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const headOpen = template.match(/<head[^>]*>/i);
     if (headOpen) {
       const i = headOpen.index + headOpen[0].length;
-      template = template.slice(0, i) + resourceScript + analyticsScript + template.slice(i);
+      template = template.slice(0, i) + resourceScript + analyticsScript + adminShortcutScript + template.slice(i);
     }
 
     // Parse the template and swap the root element. Scripts inserted via
